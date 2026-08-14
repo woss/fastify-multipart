@@ -452,7 +452,6 @@ function fastifyMultipart (fastify, options, done) {
 
     function onError (err) {
       lastError = err
-      currentFile = null
     }
 
     function onRequestClose () {
