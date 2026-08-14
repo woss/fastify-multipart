@@ -498,25 +498,27 @@ function fastifyMultipart (fastify, options, done) {
     const tmpdir = options?.tmpdir || os.tmpdir()
     this.tmpUploads = []
     let i = 0
-    for await (const part of parts) {
-      values = part.fields
+    let target
+    try {
+      for await (const part of parts) {
+        values = part.fields
 
-      if (!part.file) {
-        continue
-      }
+        if (!part.file) {
+          continue
+        }
 
-      const filepath = path.join(tmpdir, generateId() + path.extname(part.filename || ('file' + i++)))
-      const target = createWriteStream(filepath)
-      try {
+        const filepath = path.join(tmpdir, generateId() + path.extname(part.filename || ('file' + i++)))
+        target = createWriteStream(filepath)
         this.tmpUploads.push(filepath)
         await pump(part.file, target)
+        target = null
         this.savedRequestFiles.push({ ...part, filepath })
-      } catch (err) {
-        target.destroy()
-        await this.cleanRequestFiles()
-        this.log.error({ err }, 'save request file')
-        throw err
       }
+    } catch (err) {
+      target?.destroy()
+      await this.cleanRequestFiles()
+      this.log.error({ err }, 'save request file')
+      throw err
     }
 
     this[kSavedRequestFilesResult] = {
